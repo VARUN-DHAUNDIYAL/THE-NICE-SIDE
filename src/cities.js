@@ -1,0 +1,23 @@
+export const cities = [
+  { name: 'New York', country: 'USA' },
+  { name: 'London', country: 'UK' },
+  { name: 'Paris', country: 'France' },
+  { name: 'Tokyo', country: 'Japan' },
+  { name: 'Singapore', country: 'Singapore' },
+  { name: 'Dubai', country: 'UAE' },
+  { name: 'Sydney', country: 'Australia' },
+  { name: 'Frankfurt', country: 'Germany' },
+  { name: 'Hong Kong', country: 'China' },
+  { name: 'Toronto', country: 'Canada' },
+  { name: 'Los Angeles', country: 'USA' },
+  { name: 'San Francisco', country: 'USA' },
+  { name: 'Istanbul', country: 'Turkey' },
+  { name: 'Amsterdam', country: 'Netherlands' },
+  { name: 'Madrid', country: 'Spain' },
+  { name: 'Rome', country: 'Italy' },
+  { name: 'Beijing', country: 'China' },
+  { name: 'Seoul', country: 'South Korea' },
+  { name: 'Bangkok', country: 'Thailand' },
+  { name: 'Johannesburg', country: 'South Africa' },
+  // Add more as needed
+]; 

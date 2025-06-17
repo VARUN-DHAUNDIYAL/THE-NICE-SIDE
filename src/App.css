@@ -1,0 +1,289 @@
+body, html {
+  overflow-x: hidden;
+}
+
+body {
+  min-height: 100vh;
+  margin: 0;
+  font-family: 'Inter', 'Segoe UI', Arial, sans-serif;
+  background: linear-gradient(to top, #0f2027, #203a43, #2c5364);
+  color: #fff;
+}
+
+#root {
+  min-height: 100vh;
+  width: 100vw;
+  max-width: 100vw;
+  position: relative;
+  z-index: 1;
+}
+
+#dir {
+  background-color: #ffffff;
+  position: absolute;
+  font-family: "Times New Roman";
+  font-size: 12px;
+  font-weight: bold;
+  min-width: 300px;
+  text-align: center;
+  right: 5px;
+  top: 5px;
+  opacity: 0.5;
+  z-index: 10;
+  pointer-events: none;
+}
+
+.three-bg-canvas, #bg {
+  display: block;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.main-content {
+  position: relative;
+  z-index: 2;
+  width: 100vw;
+  max-width: 100vw;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  backdrop-filter: blur(8px);
+}
+
+.hero-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 2rem;
+}
+
+.hero-logo {
+  width: 120px;
+  height: 120px;
+  margin-bottom: 1rem;
+  border-radius: 50%;
+  box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+  background: #fff;
+  object-fit: cover;
+}
+
+.hero-title {
+  font-size: 2.8rem;
+  font-weight: 800;
+  letter-spacing: 1px;
+  margin-bottom: 0.5rem;
+  color: #fff;
+  text-shadow: 0 2px 8px rgba(30,60,114,0.2);
+}
+
+.hero-desc {
+  font-size: 1.2rem;
+  color: #e0e0e0;
+  margin-bottom: 2rem;
+  text-align: center;
+  max-width: 500px;
+}
+
+.form-card {
+  background: rgba(255,255,255,0.10);
+  box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+  border-radius: 24px;
+  padding: 2.5rem 2rem 2rem 2rem;
+  max-width: 480px;
+  width: 100%;
+  margin: 0 auto;
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255,255,255,0.18);
+}
+
+.MuiTextField-root {
+  margin-bottom: 1.2rem !important;
+}
+
+.MuiButton-root {
+  background: linear-gradient(90deg, #ff512f 0%, #dd2476 100%);
+  color: #fff;
+  font-weight: 700;
+  font-size: 1.1rem;
+  border-radius: 12px;
+  padding: 0.8em 0;
+  box-shadow: 0 4px 16px 0 rgba(221,36,118,0.15);
+  transition: background 0.2s, box-shadow 0.2s;
+}
+.MuiButton-root:hover {
+  background: linear-gradient(90deg, #dd2476 0%, #ff512f 100%);
+  box-shadow: 0 8px 32px 0 rgba(221,36,118,0.25);
+}
+
+.recommendation-section {
+  margin-top: 2rem;
+  text-align: center;
+  backdrop-filter: blur(12px);
+}
+
+.recommendation-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #fff;
+  margin-bottom: 0.5rem;
+}
+
+.recommendation-detail {
+  font-size: 1.1rem;
+  color: #ffe082;
+}
+
+.result-flex {
+  display: flex;
+  flex-direction: row;
+  gap: 40px;
+  width: 96vw;
+  max-width: 1800px;
+  justify-content: center;
+  align-items: stretch;
+  flex-wrap: wrap;
+  z-index: 11;
+  margin-bottom: 32px;
+  padding-left: 2vw;
+  padding-right: 2vw;
+}
+
+.result-flex > div,
+.map-container-responsive {
+  flex: 1 1 0;
+  min-width: 400px;
+  max-width: 600px;
+  height: 420px;
+  border-radius: 24px;
+  background: rgba(255,255,255,0.10);
+  box-shadow: none;
+  border: none;
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+@media (max-width: 1200px) {
+  .result-flex {
+    max-width: 98vw !important;
+    padding-left: 1vw;
+    padding-right: 1vw;
+  }
+  .result-flex > div, .map-container-responsive {
+    max-width: 98vw !important;
+  }
+}
+
+@media (max-width: 900px) {
+  .result-flex {
+    flex-direction: column !important;
+    gap: 24px !important;
+    align-items: center !important;
+    max-width: 98vw !important;
+    padding-left: 0;
+    padding-right: 0;
+  }
+  .result-flex > div, .map-container-responsive {
+    min-width: 0 !important;
+    width: 100% !important;
+    max-width: 100vw !important;
+    height: auto !important;
+  }
+}
+
+@media (max-width: 600px) {
+  .result-flex {
+    flex-direction: column !important;
+    gap: 8px !important;
+    align-items: stretch !important;
+    width: 100vw !important;
+    max-width: 100vw !important;
+    padding: 0 1vw;
+  }
+  .result-flex > div, .map-container-responsive {
+    min-width: 0 !important;
+    width: 100% !important;
+    max-width: 100vw !important;
+    height: auto !important;
+    border-radius: 10px !important;
+    margin-bottom: 8px !important;
+    padding: 0.5rem 0.3rem !important;
+    box-sizing: border-box;
+  }
+  .recommendation-section {
+    padding: 0.8rem 0.3rem 0.8rem 0.3rem !important;
+    min-width: 0 !important;
+    max-width: 100vw !important;
+    font-size: 0.98rem !important;
+    border-radius: 10px !important;
+  }
+  .recommendation-title {
+    font-size: 1.05rem !important;
+    margin-bottom: 0.3rem !important;
+  }
+  .recommendation-detail {
+    font-size: 0.98rem !important;
+    margin-bottom: 0.5rem !important;
+  }
+  .map-responsive {
+    height: 160px !important;
+    min-height: 120px !important;
+    max-height: 180px !important;
+    border-radius: 10px !important;
+  }
+  .info-bar, .MuiPaper-root, .MuiCard-root {
+    padding: 0.7rem 0.5rem !important;
+    font-size: 0.98rem !important;
+    border-radius: 10px !important;
+  }
+  .MuiButtonGroup-root {
+    flex-direction: column !important;
+    gap: 4px !important;
+  }
+  /* Button container and buttons full width, stacked */
+  .mobile-button-group, .result-buttons {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 10px !important;
+    width: 100% !important;
+    margin: 0 auto 8px auto !important;
+    padding: 0 !important;
+  }
+  .MuiButton-root {
+    width: 100% !important;
+    min-width: 0 !important;
+    border-radius: 8px !important;
+    margin: 0 !important;
+    font-size: 1rem !important;
+    padding: 0.9em 0 !important;
+    box-sizing: border-box;
+  }
+  /* Stretch main result page to fill viewport and anchor buttons */
+  .result-page-main {
+    min-height: 100vh !important;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: space-between !important;
+    width: 100vw !important;
+    max-width: 100vw !important;
+    overflow-x: hidden !important;
+  }
+  .result-buttons {
+    background: rgba(255,255,255,0.13);
+    backdrop-filter: blur(8px);
+    border-radius: 10px 10px 0 0;
+    box-shadow: 0 -2px 12px 0 rgba(0,0,0,0.08);
+    padding-bottom: 12px;
+  }
+}
