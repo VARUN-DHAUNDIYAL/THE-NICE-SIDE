@@ -1,11 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
-  Box, Typography, TextField, Button, Autocomplete, Slider,
-  InputAdornment, CircularProgress, Grid
+  Box, Typography, Button, Slider, Grid
 } from '@mui/material';
-import { FlightTakeoff, FlightLand, AccessTime } from '@mui/icons-material';
+import { FlightTakeoff, FlightLand } from '@mui/icons-material';
 import CityAutocomplete from './CityAutocomplete';
 import DateTimeField from './DateTimeField';
+import { searchAirports } from '../utils/airportSearch';
+import { AIRCRAFT_OPTIONS } from '../data/aircraftNoise';
 
 const textFieldSx = {
   background: 'rgba(255,255,255,0.25)',
@@ -33,6 +34,11 @@ export default function FlightDetailsForm({ onSubmit }) {
   const [loadingDestination, setLoadingDestination] = useState(false);
   const [departureDateTime, setDepartureDateTime] = useState('');
   const [flightTime, setFlightTime] = useState(7);
+  const [chronotype, setChronotype] = useState('neutral');
+  const [aircraftType, setAircraftType] = useState('unknown');
+
+  const debounceTimerSource = useRef(null);
+  const debounceTimerDestination = useRef(null);
 
   const fetchCities = async (input, setOptions, setLoading) => {
     if (!input || input.length < 2) {
@@ -40,83 +46,43 @@ export default function FlightDetailsForm({ onSubmit }) {
       return;
     }
     setLoading(true);
-    try {
-      const response = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(input)}&format=json&addressdetails=1&limit=5&extratags=1&featuretype=city`, {
-        headers: { 'Accept-Language': 'en' },
-      });
-      const data = await response.json();
-      const cities = data.filter(item => item.type === 'city' || item.type === 'town' || item.type === 'village');
-      setOptions(cities);
-    } catch {
-      setOptions([]);
-    }
+    const results = await searchAirports(input);
+    setOptions(results);
     setLoading(false);
   };
 
   const handleSourceInputChange = async (event, value) => {
+    if (debounceTimerSource.current) clearTimeout(debounceTimerSource.current);
+
     if (!value || value.length < 2) {
       setSourceOptions([]);
+      setLoadingSource(false);
       return;
     }
     setLoadingSource(true);
-    let results = [];
-    try {
-      const response = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(value)}&format=json&addressdetails=1&limit=8&extratags=1`, {
-        headers: { 'Accept-Language': 'en' },
-      });
-      const data = await response.json();
-      results = data
-        .filter(item => ['city', 'town', 'village', 'airport'].includes(item.type))
-        .map(item => ({
-          id: item.place_id,
-          name: item.display_name.split(',')[0],
-          country: item.address?.country || '',
-          lat: item.lat,
-          lon: item.lon,
-          type: item.type,
-          display_name: item.display_name,
-          iata_code: item.extratags?.iata || '',
-          icao_code: item.extratags?.icao || '',
-          city: item.address?.city || '',
-        }));
-    } catch (e) {
-      results = [];
-    }
-    setSourceOptions(results);
-    setLoadingSource(false);
+
+    debounceTimerSource.current = setTimeout(async () => {
+      const results = await searchAirports(value);
+      setSourceOptions(results);
+      setLoadingSource(false);
+    }, 200); // Reduced debounce time for local search
   };
 
   const handleDestinationInputChange = async (event, value) => {
+    if (debounceTimerDestination.current) clearTimeout(debounceTimerDestination.current);
+
     if (!value || value.length < 2) {
       setDestinationOptions([]);
+      setLoadingDestination(false);
       return;
     }
     setLoadingDestination(true);
-    let results = [];
-    try {
-      const response = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(value)}&format=json&addressdetails=1&limit=8&extratags=1`, {
-        headers: { 'Accept-Language': 'en' },
-      });
-      const data = await response.json();
-      results = data
-        .filter(item => ['city', 'town', 'village', 'airport'].includes(item.type))
-        .map(item => ({
-          id: item.place_id,
-          name: item.display_name.split(',')[0],
-          country: item.address?.country || '',
-          lat: item.lat,
-          lon: item.lon,
-          type: item.type,
-          display_name: item.display_name,
-          iata_code: item.extratags?.iata || '',
-          icao_code: item.extratags?.icao || '',
-          city: item.address?.city || '',
-        }));
-    } catch (e) {
-      results = [];
-    }
-    setDestinationOptions(results);
-    setLoadingDestination(false);
+
+    debounceTimerDestination.current = setTimeout(async () => {
+      const results = await searchAirports(value);
+      setDestinationOptions(results);
+      setLoadingDestination(false);
+    }, 200); // Reduced debounce time for local search
   };
 
   const handleSourceSelect = (event, value) => {
@@ -126,7 +92,7 @@ export default function FlightDetailsForm({ onSubmit }) {
       setSourceCoords(null);
       return;
     }
-    
+
     // Extract the main city name (first part before comma)
     const cityName = value.display_name.split(',')[0].trim();
     setSourceCity({ ...value, display_name: cityName });
@@ -140,7 +106,7 @@ export default function FlightDetailsForm({ onSubmit }) {
       setDestinationCoords(null);
       return;
     }
-    
+
     // Extract the main city name (first part before comma)
     const cityName = value.display_name.split(',')[0].trim();
     setDestinationCity({ ...value, display_name: cityName });
@@ -166,7 +132,9 @@ export default function FlightDetailsForm({ onSubmit }) {
       flightTime,
       departureDateTime,
       sourceCity: { ...sourceCity, display_name: sourceCityName },
-      destinationCity: { ...destinationCity, display_name: destinationCityName }
+      destinationCity: { ...destinationCity, display_name: destinationCityName },
+      chronotype,
+      aircraftType,
     });
   };
 
@@ -188,7 +156,7 @@ export default function FlightDetailsForm({ onSubmit }) {
       }}
     >
       <Typography variant="h4" align="center" gutterBottom sx={{ fontWeight: 800, color: '#fff', letterSpacing: 1, mb: 3 }}>
-        Flight Details
+        FLIGHT-MASTER
       </Typography>
       <form onSubmit={handleSubmit} style={{ width: '100%' }}>
         <Grid container spacing={2} sx={{ mb: 1 }} alignItems="center">
@@ -219,6 +187,54 @@ export default function FlightDetailsForm({ onSubmit }) {
               />
             </Box>
           </Box>
+
+          {/* Chronotype Selector */}
+          <Box sx={{ mt: 1.5 }}>
+            <Typography sx={{ color: '#fff', fontWeight: 700, fontSize: '0.95rem', mb: 1, textAlign: 'left' }}>
+              Your Sleep Style
+            </Typography>
+            <Box sx={{ display: 'flex', gap: 1 }}>
+              {[
+                { value: 'morning', label: '🌅 Early Bird' },
+                { value: 'neutral', label: '🕐 Neutral' },
+                { value: 'night', label: '🦉 Night Owl' },
+              ].map(opt => (
+                <button
+                  key={opt.value} type="button"
+                  onClick={() => setChronotype(opt.value)}
+                  style={{
+                    flex: 1, padding: '8px 4px', borderRadius: 12,
+                    border: chronotype === opt.value ? '2px solid #ffe082' : '2px solid rgba(255,255,255,0.2)',
+                    background: chronotype === opt.value ? 'rgba(255,224,130,0.18)' : 'rgba(255,255,255,0.1)',
+                    color: '#fff', cursor: 'pointer', fontSize: '0.78rem', fontWeight: 600, transition: 'all 0.2s',
+                  }}
+                >{opt.label}</button>
+              ))}
+            </Box>
+          </Box>
+
+          {/* Aircraft Type Selector */}
+          <Box sx={{ mt: 1.5 }}>
+            <Typography sx={{ color: '#fff', fontWeight: 700, fontSize: '0.95rem', mb: 1, textAlign: 'left' }}>
+              Aircraft Type <span style={{ fontWeight: 400, opacity: 0.6 }}>(optional)</span>
+            </Typography>
+            <select
+              value={aircraftType}
+              onChange={e => setAircraftType(e.target.value)}
+              style={{
+                width: '100%', padding: '10px 14px', borderRadius: 12,
+                background: 'rgba(255,255,255,0.22)', border: '1.5px solid rgba(255,255,255,0.25)',
+                color: '#fff', fontSize: '0.95rem', fontWeight: 600, cursor: 'pointer', outline: 'none',
+              }}
+            >
+              {AIRCRAFT_OPTIONS.map(opt => (
+                <option key={opt.value} value={opt.value} style={{ background: '#1a1a2e', color: '#fff' }}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+          </Box>
+
           <Button
             type="submit"
             variant="contained"

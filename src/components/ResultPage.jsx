@@ -1,266 +1,206 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Button } from '@mui/material';
 import { motion, AnimatePresence } from 'framer-motion';
-import RecommendationCard from './RecommendationCard';
-import Confetti from 'react-confetti';
-import AnimatedResultBackground from './AnimatedResultBackground';
-import FlightMap from './FlightMap';
+import FlightGlobe from './FlightGlobe';
+import JourneyPanel from './JourneyPanel';
+import KpiPanel from './KpiPanel';
+import EventTimeline from './EventTimeline';
+import FlightStoryCard from './FlightStoryCard';
 import html2canvas from 'html2canvas';
 
-export default function ResultPage({ recommendation, summary, onBack, dayNight = 0 }) {
-  const resultRef = useRef();
-  const [saving, setSaving] = useState(false);
+// Glassmorphism token
+const GLASS = {
+  background: 'rgba(5, 10, 28, 0.72)',
+  backdropFilter: 'blur(18px) saturate(180%)',
+  WebkitBackdropFilter: 'blur(18px) saturate(180%)',
+  border: '1px solid rgba(255,255,255,0.10)',
+};
 
-  // Scroll to top when the page loads
+export default function ResultPage({ recommendation, summary, onBack }) {
+  const [vpSize, setVpSize] = useState({ w: window.innerWidth, h: window.innerHeight });
+  const [showStory, setShowStory] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const storyRef = useRef();
+
+  // Keep viewport size fresh on resize
   useEffect(() => {
-    window.scrollTo(0, 0);
+    const fn = () => setVpSize({ w: window.innerWidth, h: window.innerHeight });
+    window.addEventListener('resize', fn);
+    return () => window.removeEventListener('resize', fn);
   }, []);
 
-  // Determine if confetti should show
-  const isPerfect =
-    recommendation &&
-    (recommendation.type === 'left' || recommendation.type === 'right') &&
-    recommendation.detail.includes('80');
-
-  // Share handler
-  const handleShare = () => {
-    const text = `Flight: ${summary.source} → ${summary.destination}\nDeparture: ${summary.time}\nDuration: ${summary.duration}h\nRecommendation: ${recommendation.rec} - ${recommendation.detail}`;
-    if (navigator.share) {
-      navigator.share({ title: 'Sun Seat Recommendation', text });
-    } else {
-      navigator.clipboard.writeText(text);
-      alert('Recommendation copied to clipboard!');
-    }
-  };
-
-  // Save as image handler
-  const handleSaveImage = async () => {
-    if (!resultRef.current) return;
+  const handleSave = async () => {
     setSaving(true);
     try {
-      const canvas = await html2canvas(resultRef.current, {
-        backgroundColor: null,
-        useCORS: true,
+      // Hide the buttons momentarily
+      const btnContainer = document.getElementById('dashboard-actions');
+      if (btnContainer) btnContainer.style.opacity = '0';
+
+      await new Promise(r => setTimeout(r, 150));
+
+      // Capture the actual viewport (which includes the WebGL globe because we'll add preserveDrawingBuffer)
+      const canvas = await html2canvas(document.body, {
+        backgroundColor: '#040810',
         scale: 2,
+        useCORS: true
       });
-      const link = document.createElement('a');
-      link.download = 'sun-seat-recommendation.png';
-      link.href = canvas.toDataURL('image/png');
-      link.click();
+
+      // Use toBlob instead of toDataURL to prevent URL length limits corrupting the file
+      await new Promise((resolve, reject) => {
+        canvas.toBlob((blob) => {
+          if (!blob) return reject(new Error('Failed to generate image blob'));
+          const link = document.createElement('a');
+          link.download = `flight-dashboard-${Date.now()}.png`;
+          link.href = URL.createObjectURL(blob);
+          link.click();
+          URL.revokeObjectURL(link.href);
+          resolve();
+        }, 'image/png');
+      });
+
+      if (btnContainer) btnContainer.style.opacity = '1';
     } catch (e) {
-      alert('Failed to save image.');
+      console.error('Failed to save dashboard screenshot:', e);
+      // Ensure buttons reappear even if error occurred
+      const btnContainer = document.getElementById('dashboard-actions');
+      if (btnContainer) btnContainer.style.opacity = '1';
+    } finally {
+      setSaving(false);
     }
-    setSaving(false);
   };
 
+  if (!recommendation) return null;
+
+  const hasGlobe = recommendation.pathPoints?.length >= 2;
+  const timelineEvents = recommendation.timelineEvents || [];
+
   return (
-    <AnimatePresence>
+    <div style={{
+      position: 'fixed', inset: 0,
+      width: '100vw', height: '100vh',
+      overflow: 'hidden',
+      background: '#040810',
+      fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, sans-serif',
+    }}>
+      {/* ── Full-screen Globe ── */}
+      {hasGlobe && (
+        <div style={{ position: 'absolute', inset: 0, zIndex: 0 }}>
+          <FlightGlobe
+            pathPoints={recommendation.pathPoints}
+            source={recommendation.source}
+            destination={recommendation.destination}
+            recommendedSide={recommendation.type}
+            sunriseSunsetMarkers={recommendation.sunriseSunsetMarkers}
+            cityFlybys={recommendation.cityFlybys || []}
+            landmarkAlerts={recommendation.landmarkAlerts || []}
+            auroraSegments={recommendation.auroraSegments || []}
+            turbulenceSegments={recommendation.turbulenceSegments || []}
+            moonLat={recommendation.moonLat}
+            moonLon={recommendation.moonLon}
+            width={vpSize.w}
+            height={vpSize.h}
+          />
+        </div>
+      )}
+
+      {/* ── Edge vignettes for depth ── */}
+      <div style={{
+        position: 'absolute', inset: 0, zIndex: 1, pointerEvents: 'none',
+        background: 'radial-gradient(ellipse at center, transparent 55%, rgba(4,8,16,0.7) 100%)',
+      }} />
+
+      {/* ── Top-left: Journey Summary ── */}
+      <JourneyPanel recommendation={recommendation} summary={summary} />
+
+      {/* ── Top-right: KPI Panel ── */}
+      <KpiPanel recommendation={recommendation} />
+
+      {/* ── Bottom HUD bar ── */}
       <motion.div
-        ref={resultRef}
-        key="result-page"
-        className="result-page-main"
-        initial={{ opacity: 0, y: 60 }}
+        initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        exit={{ opacity: 0, y: 60 }}
-        transition={{ duration: 0.6, type: 'spring', stiffness: 120 }}
+        transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1], delay: 0.22 }}
         style={{
-          minHeight: '100vh',
-          width: '100vw',
-          maxWidth: '100vw',
+          position: 'absolute',
+          bottom: 0, left: 0, right: 0,
+          zIndex: 30,
+          padding: '16px 20px 20px',
           display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'flex-start',
-          position: 'relative',
-          zIndex: 10,
-          overflowX: 'hidden',
-          overflowY: 'auto',
+          alignItems: 'flex-end',
+          gap: 16,
+          ...GLASS,
+          borderRadius: '24px 24px 0 0',
+          borderBottom: 'none',
+          background: 'rgba(4, 8, 22, 0.80)',
         }}
       >
-        {/* Background */}
-        <div
+        {/* Back button */}
+        <button
+          onClick={onBack}
           style={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            width: '100vw',
-            height: '100vh',
-            zIndex: 0,
-          }}
-        >
-          <AnimatedResultBackground dayNight={dayNight} />
-        </div>
-
-        {/* Confetti */}
-        {isPerfect && (
-          <Confetti
-            width={window.innerWidth}
-            height={window.innerHeight}
-            numberOfPieces={180}
-            recycle={false}
-            gravity={0.18}
-          />
-        )}
-
-        {/* Info Bar */}
-        <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2, type: 'spring', stiffness: 120 }}
-          style={{
-            marginTop: 36,
-            marginBottom: 32,
-            backgroundColor: 'rgba(255, 255, 255, 0.35)', // more visible
-            borderRadius: 18,
-            padding: '1.1rem 2.5rem',
-            boxShadow: '0 4px 16px rgba(0,0,0,0.15)',
-            backdropFilter: 'blur(6px)',
+            flexShrink: 0,
+            background: 'rgba(255,255,255,0.07)',
+            border: '1px solid rgba(255,255,255,0.12)',
+            borderRadius: 10,
+            color: 'rgba(255,255,255,0.7)',
+            padding: '8px 14px',
+            cursor: 'pointer',
+            fontSize: '0.78rem',
+            fontWeight: 600,
             display: 'flex',
             alignItems: 'center',
-            gap: 24,
-            zIndex: 12,
-            fontWeight: 700,
-            fontSize: '1.18rem',
-            color: '#fff',
-            letterSpacing: 1,
-            flexWrap: 'wrap',
+            gap: 6,
+            whiteSpace: 'nowrap',
+            transition: 'all 0.2s',
+            fontFamily: 'inherit',
           }}
+          onMouseEnter={e => { e.target.style.background = 'rgba(255,255,255,0.12)'; e.target.style.color = '#fff'; }}
+          onMouseLeave={e => { e.target.style.background = 'rgba(255,255,255,0.07)'; e.target.style.color = 'rgba(255,255,255,0.7)'; }}
         >
-          <span style={{ color: '#ffe082', fontWeight: 800, fontSize: '1.25rem' }}>{summary.source}</span>
-          <span style={{ fontSize: 22, color: '#fff', margin: '0 8px' }}>→</span>
-          <span style={{ color: '#90cdf4', fontWeight: 800, fontSize: '1.25rem' }}>{summary.destination}</span>
-          <span
-            style={{
-              color: '#fff',
-              fontWeight: 400,
-              fontSize: '1.08rem',
-              marginLeft: 18,
-            }}
-          >
-            Departure: <b>{summary.time}</b> &nbsp; | &nbsp; Duration: <b>{summary.duration}h</b>
-          </span>
-        </motion.div>
+          ← New Flight
+        </button>
 
-        {/* Main Content: Card + Map */}
-        <div
-          className="result-flex"
-          style={{
-            display: 'flex',
-            flexDirection: 'row',
-            gap: 40,
-            width: '100%',
-            maxWidth: 1200,
-            justifyContent: 'center',
-            alignItems: 'flex-start',
-            flexWrap: 'wrap',
-            zIndex: 11,
-          }}
-        >
-          {/* Recommendation card */}
-          <div
-            style={{
-              flex: 1,
-              minWidth: 340,
-              maxWidth: 520,
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-            }}
-          >
-            <RecommendationCard
-              rec={recommendation.rec}
-              detail={recommendation.detail}
-              type={recommendation.type}
-              summary={summary}
-            />
-          </div>
+        {/* Event Timeline — always shown, injects takeoff/landing */}
+        <EventTimeline
+          events={timelineEvents}
+          flightDurationHours={parseFloat(summary?.duration || 8)}
+          source={recommendation.source}
+          destination={recommendation.destination}
+        />
 
-          {/* Map */}
-          <div
-            className="map-container-responsive"
-            style={{
-              flex: 1,
-              minWidth: 340,
-              maxWidth: 700,
-              display: 'flex',
-              justifyContent: 'center',
-            }}
-          >
-            {recommendation.pathPoints &&
-              recommendation.source &&
-              recommendation.destination && (
-                <FlightMap
-                  pathPoints={recommendation.pathPoints}
-                  source={recommendation.source}
-                  destination={recommendation.destination}
-                  recommendedSide={recommendation.type}
-                  sunriseSunsetMarkers={recommendation.sunriseSunsetMarkers}
-                />
-              )}
-          </div>
-        </div>
-
-        {/* Buttons */}
-        <div className="result-buttons" style={{ display: 'flex', gap: 24, marginTop: 36, zIndex: 12 }}>
-          <Button
-            variant="contained"
-            color="primary"
-            size="large"
-            sx={{
-              fontWeight: 700,
-              fontSize: '1.1rem',
-              borderRadius: 12,
-              px: 4,
-              boxShadow: '0 2px 12px 0 rgba(221,36,118,0.13)',
-            }}
-            onClick={handleShare}
-          >
-            Share
-          </Button>
-          <Button
-            variant="outlined"
-            color="secondary"
-            size="large"
-            sx={{
-              fontWeight: 700,
-              fontSize: '1.1rem',
-              borderRadius: 12,
-              px: 4,
-              border: '2px solid #fff4',
-              color: '#fff',
-            }}
-            onClick={onBack}
-          >
-            Go Back
-          </Button>
-          <Button
-            variant="contained"
-            color="success"
-            size="large"
-            sx={{
-              fontWeight: 700,
-              fontSize: '1.1rem',
-              borderRadius: 12,
-              px: 4,
-              boxShadow: '0 2px 12px 0 rgba(36,221,118,0.13)',
-            }}
-            onClick={handleSaveImage}
+        {/* Action buttons */}
+        <div id="dashboard-actions" style={{ flexShrink: 0, display: 'flex', gap: 8, alignItems: 'center', transition: 'opacity 0.2s' }}>
+          <button
+            onClick={handleSave}
             disabled={saving}
+            title="Save flight story"
+            style={{
+              background: saving ? 'rgba(0,200,255,0.1)' : 'rgba(0,200,255,0.12)',
+              border: '1px solid rgba(0,200,255,0.3)',
+              borderRadius: 10,
+              color: '#00C8FF',
+              padding: '8px 14px',
+              cursor: saving ? 'wait' : 'pointer',
+              fontSize: '0.78rem',
+              fontWeight: 700,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              whiteSpace: 'nowrap',
+              fontFamily: 'inherit',
+              transition: 'all 0.2s',
+            }}
           >
-            {saving ? 'Saving...' : 'Save as Image'}
-          </Button>
+            {saving ? '⏳' : '💾'} {saving ? 'Saving…' : 'Save Story'}
+          </button>
         </div>
-
-        {/* Mobile Responsive Styles */}
-        <style>{`
-          @media (max-width: 900px) {
-            .result-flex { flex-direction: column !important; gap: 24px !important; align-items: center !important; }
-          }
-          @media (max-width: 600px) {
-            .map-container-responsive { min-width: 0 !important; width: 100% !important; max-width: 100vw !important; }
-          }
-        `}</style>
       </motion.div>
-    </AnimatePresence>
+
+      {/* Hidden story card for export */}
+      <div style={{ position: 'fixed', left: '-9999px', top: 0, opacity: showStory ? 1 : 0, pointerEvents: 'none' }}>
+        <div ref={storyRef}>
+          <FlightStoryCard recommendation={recommendation} summary={summary} />
+        </div>
+      </div>
+    </div>
   );
 }

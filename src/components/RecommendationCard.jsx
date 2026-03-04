@@ -15,7 +15,16 @@ const accentMap = {
   none: 'linear-gradient(90deg, #b0b0b0 0%, #e0e7ef 100%)',
 };
 
-export default function RecommendationCard({ rec, detail, type, summary }) {
+const GOLDEN_HOUR_LABELS = {
+  departure_sunrise: { icon: '🌅', label: 'Sunrise at departure' },
+  departure_golden_hour: { icon: '🌇', label: 'Golden hour at departure' },
+  arrival_sunrise: { icon: '🌅', label: 'Sunrise at arrival' },
+  arrival_golden_hour: { icon: '🌇', label: 'Golden hour at arrival' },
+};
+
+const UV_COLOURS = { low: '#4caf50', moderate: '#ff9800', high: '#f44336' };
+
+export default function RecommendationCard({ rec, detail, type, summary, goldenHourEvents = [], sunburnRisk }) {
   return (
     <motion.div
       className="recommendation-section"
@@ -26,18 +35,18 @@ export default function RecommendationCard({ rec, detail, type, summary }) {
         marginTop: 32,
         background: 'rgba(255,255,255,0.22)',
         borderRadius: 22,
-        padding: '2.2rem 2.5rem 2.2rem 2.5rem',
-        boxShadow: 'none',
+        padding: '2.2rem 2.5rem',
         backdropFilter: 'blur(12px)',
         maxWidth: 520,
         minWidth: 320,
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
-        border: `2.5px solid #fff4`,
+        border: '2.5px solid #fff4',
         position: 'relative',
       }}
     >
+      {/* Icon */}
       <motion.div
         initial={{ scale: 0.8, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
@@ -45,19 +54,76 @@ export default function RecommendationCard({ rec, detail, type, summary }) {
         style={{
           background: accentMap[type] || accentMap.none,
           borderRadius: '50%',
-          width: 80,
-          height: 80,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
+          width: 80, height: 80,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
           marginBottom: 18,
-          boxShadow: 'none',
         }}
       >
         {iconMap[type] || iconMap.none}
       </motion.div>
-      <div className="recommendation-title" style={{ fontWeight: 900, fontSize: '2rem', color: '#ffe082', marginBottom: 10, textAlign: 'center', letterSpacing: 1 }}>{rec}</div>
-      <div className="recommendation-detail" style={{ fontWeight: 500, fontSize: '1.15rem', color: '#fff', marginBottom: 18, textAlign: 'center' }}>{detail}</div>
+
+      {/* Headline */}
+      <div style={{ fontWeight: 900, fontSize: '2rem', color: '#ffe082', marginBottom: 10, textAlign: 'center', letterSpacing: 1 }}>{rec}</div>
+      <div style={{ fontWeight: 500, fontSize: '1.15rem', color: '#fff', marginBottom: 14, textAlign: 'center' }}>{detail}</div>
+
+      {/* ── Phase 1: Golden Hour Badges ── */}
+      {goldenHourEvents.length > 0 && (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'center', marginBottom: 14 }}>
+          {goldenHourEvents.map((evt, i) => {
+            const meta = GOLDEN_HOUR_LABELS[evt.type] || { icon: '🌇', label: evt.type };
+            return (
+              <motion.div
+                key={i}
+                initial={{ opacity: 0, scale: 0.85 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: 0.4 + i * 0.08 }}
+                style={{
+                  background: 'linear-gradient(90deg, rgba(255,213,79,0.22) 0%, rgba(255,152,0,0.18) 100%)',
+                  border: '1px solid rgba(255,213,79,0.45)',
+                  borderRadius: 20,
+                  padding: '4px 12px',
+                  fontSize: '0.78rem',
+                  color: '#ffe082',
+                  fontWeight: 600,
+                  display: 'flex', alignItems: 'center', gap: 5,
+                }}
+              >
+                <span>{meta.icon}</span>
+                <span>{meta.label}</span>
+                {evt.city && <span style={{ opacity: 0.7 }}>· {evt.city}</span>}
+              </motion.div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* ── Phase 4: Sunburn Risk ── */}
+      {sunburnRisk && sunburnRisk.level !== 'low' && (
+        <motion.div
+          initial={{ opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.5 }}
+          style={{
+            background: `${UV_COLOURS[sunburnRisk.level]}22`,
+            border: `1px solid ${UV_COLOURS[sunburnRisk.level]}66`,
+            borderRadius: 12,
+            padding: '6px 14px',
+            fontSize: '0.8rem',
+            color: UV_COLOURS[sunburnRisk.level],
+            fontWeight: 600,
+            display: 'flex', alignItems: 'center', gap: 7,
+            marginBottom: 10,
+          }}
+        >
+          <span>☀️</span>
+          <span>
+            UV risk: <b style={{ textTransform: 'capitalize' }}>{sunburnRisk.level}</b>
+            {' '}— {sunburnRisk.exposedMinutes} min direct sun ({sunburnRisk.uvEquivalentMinutes} min ground-equivalent at altitude)
+          </span>
+        </motion.div>
+      )}
+
+      {/* Flight summary */}
       {summary && (
         <div style={{
           background: 'rgba(255,255,255,0.13)',
@@ -67,7 +133,6 @@ export default function RecommendationCard({ rec, detail, type, summary }) {
           fontWeight: 500,
           fontSize: '1.05rem',
           marginTop: 6,
-          boxShadow: 'none',
           textAlign: 'center',
         }}>
           <span style={{ color: '#ffe082', fontWeight: 700 }}>{summary.source}</span>
@@ -81,4 +146,4 @@ export default function RecommendationCard({ rec, detail, type, summary }) {
       )}
     </motion.div>
   );
-} 
+}
