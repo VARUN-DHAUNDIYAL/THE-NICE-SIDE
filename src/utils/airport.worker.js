@@ -1,4 +1,5 @@
 import Fuse from 'fuse.js';
+import rawAirports from '../data/airports.json';
 
 let fuseInstance = null;
 let airportList = [];
@@ -7,8 +8,8 @@ let airportList = [];
 const initFuse = async () => {
     if (fuseInstance) return fuseInstance;
 
-    // Dynamically import the JSON - Note: This happens in the Web Worker thread now
-    const rawAirports = (await import('../data/airports.json')).default;
+    // Web worker chunking can fail in Vite using dynamic import (iife format error).
+    // Using static import since this worker runs in a separate background thread anyway.
 
     // Convert object dictionary into an array and keep only major/medium airports with IATA
     airportList = Object.values(rawAirports).filter(
