@@ -80,7 +80,7 @@ export default function FlightMap({ pathPoints, source, destination, sunPosition
         keyboard={false}
         touchZoom={false}
         boxZoom={false}
-        center={pathPoints && pathPoints.length > 0 ? [pathPoints[0].lat, pathPoints[0].lon] : [0,0]}
+        center={pathPoints && pathPoints.length > 0 ? [pathPoints[0].lat, pathPoints[0].lon] : [0, 0]}
         zoom={3}
       >
         <ForceResizeOnMobile />

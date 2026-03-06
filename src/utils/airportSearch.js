@@ -1,53 +1,50 @@
-import Fuse from 'fuse.js';
+import AirportWorker from './airport.worker?worker';
 
-let fuseInstance = null;
-let airportList = [];
+let worker = null;
+const pendingResolves = new Map();
+let msgId = 0;
 
-// Lazy load the data to avoid blocking initial render
-const getFuseInstance = async () => {
-    if (fuseInstance) return fuseInstance;
+function getWorker() {
+    if (!worker) {
+        worker = new AirportWorker();
+        worker.onmessage = (e) => {
+            const { id, results, error, type } = e.data;
+            const resolve = pendingResolves.get(id);
+            if (resolve) {
+                pendingResolves.delete(id);
+                if (error) {
+                    console.error("Worker error decoding airports:", error);
+                    resolve([]); // Return empty on error
+                } else if (type !== 'init_done') {
+                    resolve(results || []);
+                } else {
+                    resolve();
+                }
+            }
+        };
 
-    // Dynamically import the JSON file to keep bundle size small if not used
-    const rawAirports = (await import('../data/airports.json')).default;
+        // Pre-warm the index immediately (in background thread)
+        // so that typing the first letter is instant!
+        const initId = msgId++;
+        pendingResolves.set(initId, () => { });
+        worker.postMessage({ id: initId, type: 'init' });
+    }
+    return worker;
+}
 
-    // Convert object dictionary into an array and keep only major/medium airports with IATA
-    airportList = Object.values(rawAirports).filter(
-        (airport) => airport.iata && airport.iata !== '' && airport.tz && airport.tz !== 'Unknown'
-    );
-
-    const options = {
-        keys: [
-            { name: 'iata', weight: 0.6 },
-            { name: 'city', weight: 0.3 },
-            { name: 'name', weight: 0.1 },
-        ],
-        threshold: 0.3, // Allow some typos
-        includeScore: true,
-    };
-
-    fuseInstance = new Fuse(airportList, options);
-    return fuseInstance;
-};
+// Start the worker processing immediately without waiting for a search
+// This guarantees the 9MB JSON gets parsed completely in the background
+// before the user even clicks the autocomplete box.
+getWorker();
 
 export const searchAirports = async (query) => {
     if (!query || query.length < 2) return [];
 
-    const fuse = await getFuseInstance();
-    const results = fuse.search(query).slice(0, 10);
+    const w = getWorker();
+    const id = msgId++;
 
-    return results.map(result => {
-        const item = result.item;
-        return {
-            id: item.icao || item.iata,
-            name: item.name,
-            country: item.country,
-            lat: item.lat,
-            lon: item.lon,
-            type: 'airport',
-            display_name: `${item.city}, ${item.country}`,
-            iata_code: item.iata,
-            icao_code: item.icao,
-            city: item.city,
-        };
+    return new Promise((resolve) => {
+        pendingResolves.set(id, resolve);
+        w.postMessage({ id, type: 'search', query });
     });
 };
